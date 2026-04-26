@@ -1,80 +1,81 @@
-# EMS — Smart Recruitment (Oracle Database + AI unified)
+# EMS Recruitment — Intelligent Talent Matching Platform
 
-Single Flask + Oracle Database application with one runtime flag that switches ranking between **Database Systems mode** (stored procedure + SQL views) and **AI mode** (PDF text, spaCy phrase matching into `CandidateSkills`, scikit-learn TF-IDF cosine similarity, optional semantic similarity). The HTTP API and web UI are identical in both modes.
+EMS (Enterprise Management System) Recruitment is a high-performance, automated talent acquisition platform built with Flask and Oracle Database. It leverages intelligent filtering and profile alignment analysis to surface the best candidates for your organization.
+
+## Key Features
+
+*   **Intelligent Talent Matching**: Proprietary matching engine that analyzes candidate competencies and alignment with role requirements.
+*   **Automated Profile Screening**: Seamless PDF resume processing with automatic identification of professional skills.
+*   **Premium Glassmorphism UI**: State-of-the-art dark mode interface designed for optimal recruiter and candidate experience.
+*   **Enterprise-Grade Backend**: Powered by Oracle Database with robust PL/SQL stored procedures and views for high-speed data processing.
+*   **Full Admin Suite**: Comprehensive oversight for user management, job monitoring, and secure audit logging.
+
+## Tech Stack
+
+*   **Frontend**: HTML5, Vanilla CSS (Premium Glassmorphism), JavaScript (Fetch API)
+*   **Backend**: Flask (Python)
+*   **Database**: Oracle Database (XE 11.2+, 23c Free)
+*   **Connectivity**: `oracledb` (Thick Mode enabled for legacy support)
+*   **Processing**: NLP-based skill identification and profile scoring
 
 ## Prerequisites
 
 - Python 3.10+
-- Oracle Database (XE 11.2+ or 23c Free)
-- Oracle Client Libraries (Required for thick mode, detected at `D:\oraclexe\app\oracle\product\11.2.0\server\bin`)
+- Oracle Database instance
+- Oracle Client Libraries (detected automatically in Thick Mode)
 
-## Database setup
+## Getting Started
 
-The application uses an automated initialization script for Oracle Database.
+### 1. Initialize the Environment
 
-1.  Ensure your Oracle Database instance is running.
-2.  Run the initialization script to create sequences, tables, triggers, and procedures:
+```bash
+# Clone the repository (if applicable)
+# git clone <your-repo-url>
+# cd EMS
+
+# Create and activate a virtual environment
+python -m venv .venv
+.venv\Scripts\activate
+
+# Install required packages
+pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+```
+
+### 2. Database Configuration
+
+Ensure your Oracle credentials are set in `config.py` or via environment variables:
+
+- `ORACLE_USER`
+- `ORACLE_PASSWORD`
+- `ORACLE_DSN`
+
+Run the automated initialization script to set up the schema:
 
 ```bash
 python init_db.py
 ```
 
-This runs the scripts in `database/` in order:
-- `01_schema.sql` — tables, sequences, and auto-increment triggers
-- `02_seed.sql` — `EducationLevels` and `Skills` lookup data
-- `03_sp_views_trigger.sql` — `sp_CalculateCandidateScore` (PL/SQL), views, and audit trigger
-- `04_admin_seed.sql` — default admin user (development)
-
-Default admin login: `admin@ems.local` / `admin123`.
-
-## Python environment
+### 3. Run the Application
 
 ```bash
-cd d:\EMS
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-python -m spacy download en_core_web_sm
-```
-
-## Configuration (environment variables)
-
-| Variable | Purpose |
-|----------|---------|
-| `ORACLE_USER` | Default `ems_user` |
-| `ORACLE_PASSWORD` | Default `abc123` |
-| `ORACLE_DSN` | Default `localhost:1521/xe` |
-| `SECRET_KEY` | Flask session secret (set in production) |
-| `USE_AI_RANKING` | `true` / `false` — **`false`** = DBS stored procedure ranking; **`true`** = AI TF-IDF |
-| `USE_SEMANTIC_RANKING` | `true` only if sentence-transformers is installed |
-
-## Run the application
-
-```bash
-set ORACLE_PASSWORD=yourpassword
-set USE_AI_RANKING=false
 python run.py
 ```
 
-Open `http://127.0.0.1:5000/`.
+Open your browser at `http://localhost:5000`.
 
-- **DBS demo**: `USE_AI_RANKING=false` — scores calculated via Oracle PL/SQL `sp_CalculateCandidateScore`.
-- **AI demo**: `USE_AI_RANKING=true` — scores calculated via scikit-learn TF-IDF in `app/ranking_ai.py`.
+## Administrative Access
 
-## Project layout
+Default development credentials:
+- **Email**: `admin@ems.local`
+- **Password**: `admin123`
 
-| Path | Role |
-|------|------|
-| [`config.py`](config.py) | Oracle settings, flags |
-| [`db.py`](db.py) | `oracledb` connection with dictionary factory and thick mode init |
-| [`init_db.py`](init_db.py) | Oracle-specific SQL script runner |
-| [`app/blueprints/`](app/blueprints/) | `auth`, `jobs`, `applications`, `ranking`, `admin` |
-| [`database/`](database/) | Oracle-compatible SQL scripts |
+## Configuration Options
 
-## API Overview
+Toggle between standard and enhanced matching in `config.py`:
+- `USE_AI_RANKING`: Enables/Disables intelligent matching engine.
+- `USE_SEMANTIC_RANKING`: Enables deep semantic similarity analysis (requires `sentence-transformers`).
 
-- `POST /api/auth/login`, `GET /api/auth/me`
-- `GET /api/jobs`, `POST /api/jobs`, `GET /api/jobs/skills`
-- `POST /api/applications` (PDF resume upload)
-- `GET /api/ranking/<job_id>`
-- `GET /api/admin/users`, `/api/admin/audit`
+---
+
+*Developed with focus on performance, security, and user experience.*
