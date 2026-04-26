@@ -1,0 +1,206 @@
+-- Smart Recruitment EMS: Oracle 11g-compatible schema
+-- Uses sequences + auto-increment triggers instead of IDENTITY (12c+)
+
+-- Drop tables (reverse dependency order)
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE ApplicationAuditLog CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE Applications CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE JobSkills CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE Jobs CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE CandidateSkills CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE Skills CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE Candidates CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE Users CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE EducationLevels CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+
+-- Drop sequences
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE seq_educationlevels_id'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE seq_users_id'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE seq_candidates_id'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE seq_skills_id'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE seq_jobs_id'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE seq_applications_id'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE seq_auditlog_id'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+
+-- Sequences
+CREATE SEQUENCE seq_educationlevels_id START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE
+/
+CREATE SEQUENCE seq_users_id START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE
+/
+CREATE SEQUENCE seq_candidates_id START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE
+/
+CREATE SEQUENCE seq_skills_id START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE
+/
+CREATE SEQUENCE seq_jobs_id START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE
+/
+CREATE SEQUENCE seq_applications_id START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE
+/
+CREATE SEQUENCE seq_auditlog_id START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE
+/
+
+-- EducationLevels
+CREATE TABLE EducationLevels (
+  id NUMBER PRIMARY KEY,
+  code VARCHAR2(32) NOT NULL,
+  label VARCHAR2(128) NOT NULL,
+  score_weight NUMBER(5,2) NOT NULL,
+  CONSTRAINT uq_educationlevels_code UNIQUE (code)
+)
+/
+CREATE OR REPLACE TRIGGER trg_educationlevels_bi
+BEFORE INSERT ON EducationLevels FOR EACH ROW
+BEGIN
+  IF :NEW.id IS NULL THEN :NEW.id := seq_educationlevels_id.NEXTVAL; END IF;
+END;
+/
+
+-- Users
+CREATE TABLE Users (
+  id NUMBER PRIMARY KEY,
+  email VARCHAR2(255) NOT NULL,
+  password_hash VARCHAR2(512) NOT NULL,
+  full_name VARCHAR2(255) NOT NULL,
+  role VARCHAR2(20) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT uq_users_email UNIQUE (email),
+  CONSTRAINT chk_users_role CHECK (role IN ('candidate','recruiter','admin'))
+)
+/
+CREATE OR REPLACE TRIGGER trg_users_bi
+BEFORE INSERT ON Users FOR EACH ROW
+BEGIN
+  IF :NEW.id IS NULL THEN :NEW.id := seq_users_id.NEXTVAL; END IF;
+END;
+/
+
+-- Candidates
+CREATE TABLE Candidates (
+  id NUMBER PRIMARY KEY,
+  user_id NUMBER NOT NULL,
+  education_level_id NUMBER NOT NULL,
+  years_experience NUMBER DEFAULT 0 NOT NULL,
+  CONSTRAINT uq_candidates_user UNIQUE (user_id),
+  CONSTRAINT fk_candidates_user FOREIGN KEY (user_id) REFERENCES Users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_candidates_edu FOREIGN KEY (education_level_id) REFERENCES EducationLevels (id)
+)
+/
+CREATE OR REPLACE TRIGGER trg_candidates_bi
+BEFORE INSERT ON Candidates FOR EACH ROW
+BEGIN
+  IF :NEW.id IS NULL THEN :NEW.id := seq_candidates_id.NEXTVAL; END IF;
+END;
+/
+
+-- Skills
+CREATE TABLE Skills (
+  id NUMBER PRIMARY KEY,
+  name VARCHAR2(128) NOT NULL,
+  CONSTRAINT uq_skills_name UNIQUE (name)
+)
+/
+CREATE OR REPLACE TRIGGER trg_skills_bi
+BEFORE INSERT ON Skills FOR EACH ROW
+BEGIN
+  IF :NEW.id IS NULL THEN :NEW.id := seq_skills_id.NEXTVAL; END IF;
+END;
+/
+
+-- CandidateSkills
+CREATE TABLE CandidateSkills (
+  candidate_id NUMBER NOT NULL,
+  skill_id NUMBER NOT NULL,
+  PRIMARY KEY (candidate_id, skill_id),
+  CONSTRAINT fk_cs_candidate FOREIGN KEY (candidate_id) REFERENCES Candidates (id) ON DELETE CASCADE,
+  CONSTRAINT fk_cs_skill FOREIGN KEY (skill_id) REFERENCES Skills (id) ON DELETE CASCADE
+)
+/
+
+-- Jobs
+CREATE TABLE Jobs (
+  id NUMBER PRIMARY KEY,
+  recruiter_user_id NUMBER NOT NULL,
+  title VARCHAR2(255) NOT NULL,
+  description CLOB,
+  min_years_experience NUMBER DEFAULT 1 NOT NULL,
+  status VARCHAR2(20) DEFAULT 'open' NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT chk_jobs_status CHECK (status IN ('open','closed')),
+  CONSTRAINT fk_jobs_recruiter FOREIGN KEY (recruiter_user_id) REFERENCES Users (id)
+)
+/
+CREATE OR REPLACE TRIGGER trg_jobs_bi
+BEFORE INSERT ON Jobs FOR EACH ROW
+BEGIN
+  IF :NEW.id IS NULL THEN :NEW.id := seq_jobs_id.NEXTVAL; END IF;
+END;
+/
+
+-- JobSkills
+CREATE TABLE JobSkills (
+  job_id NUMBER NOT NULL,
+  skill_id NUMBER NOT NULL,
+  PRIMARY KEY (job_id, skill_id),
+  CONSTRAINT fk_js_job FOREIGN KEY (job_id) REFERENCES Jobs (id) ON DELETE CASCADE,
+  CONSTRAINT fk_js_skill FOREIGN KEY (skill_id) REFERENCES Skills (id) ON DELETE CASCADE
+)
+/
+
+-- Applications
+CREATE TABLE Applications (
+  id NUMBER PRIMARY KEY,
+  candidate_id NUMBER NOT NULL,
+  job_id NUMBER NOT NULL,
+  status VARCHAR2(20) DEFAULT 'submitted' NOT NULL,
+  score NUMBER(6,2) DEFAULT 0 NOT NULL,
+  resume_path VARCHAR2(512),
+  applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT uq_candidate_job UNIQUE (candidate_id, job_id),
+  CONSTRAINT chk_app_status CHECK (status IN ('submitted','shortlisted','rejected','reviewed')),
+  CONSTRAINT fk_app_candidate FOREIGN KEY (candidate_id) REFERENCES Candidates (id) ON DELETE CASCADE,
+  CONSTRAINT fk_app_job FOREIGN KEY (job_id) REFERENCES Jobs (id) ON DELETE CASCADE
+)
+/
+CREATE OR REPLACE TRIGGER trg_applications_bi
+BEFORE INSERT ON Applications FOR EACH ROW
+BEGIN
+  IF :NEW.id IS NULL THEN :NEW.id := seq_applications_id.NEXTVAL; END IF;
+END;
+/
+
+-- ApplicationAuditLog
+CREATE TABLE ApplicationAuditLog (
+  id NUMBER PRIMARY KEY,
+  application_id NUMBER NOT NULL,
+  old_status VARCHAR2(20) NOT NULL,
+  new_status VARCHAR2(20) NOT NULL,
+  changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT chk_audit_old CHECK (old_status IN ('submitted','shortlisted','rejected','reviewed')),
+  CONSTRAINT chk_audit_new CHECK (new_status IN ('submitted','shortlisted','rejected','reviewed')),
+  CONSTRAINT fk_audit_application FOREIGN KEY (application_id) REFERENCES Applications (id) ON DELETE CASCADE
+)
+/
+CREATE OR REPLACE TRIGGER trg_auditlog_bi
+BEFORE INSERT ON ApplicationAuditLog FOR EACH ROW
+BEGIN
+  IF :NEW.id IS NULL THEN :NEW.id := seq_auditlog_id.NEXTVAL; END IF;
+END;
+/
+CREATE INDEX idx_audit_app ON ApplicationAuditLog (application_id)
+/
+CREATE INDEX idx_audit_time ON ApplicationAuditLog (changed_at)
+/

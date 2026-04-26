@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Recruiter Dashboard — EMS{% endblock %}
+{% block nav %}
+  <a href="/recruiter/create-job">+ Post Job</a>
+  <a href="/">Home</a>
+{% endblock %}
+{% block content %}
+<div class="page-wrap">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;flex-wrap:wrap;gap:1rem">
+    <div class="page-header" style="margin:0">
+      <h1>Your Jobs</h1>
+      <p>Live summaries from your posted positions</p>
+    </div>
+    <a href="/recruiter/create-job" class="btn-primary-dark" style="width:auto;padding:.6rem 1.4rem;font-size:.875rem">+ Post a Job</a>
+  </div>
+  <div id="alert" class="alert"></div>
+  <div id="list" class="card-grid"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function load() {
+  const r = await fetch('/api/jobs?mine=1', { credentials: 'include' });
+  const box = document.getElementById('alert');
+  if (r.status === 401) {
+    box.className='alert alert-warning show';
+    box.innerHTML='Please <a href="/recruiter/login" style="color:var(--accent2)">log in</a>.';
+    return;
+  }
+  const jobs = await r.json().catch(() => []);
+  const root = document.getElementById('list');
+  if (!jobs.length) {
+    root.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">💼</div><p>No jobs yet. <a href="/recruiter/create-job" style="color:var(--accent2)">Post your first job</a></p></div>`;
+    return;
+  }
+  root.innerHTML = jobs.map((j, i) => {
+    const avg = parseFloat(j.average_score) || 0;
+    const pct = Math.min(100, avg).toFixed(0);
+    const statusBadge = j.job_status === 'open' ? '<span class="badge badge-open">Open</span>' : '<span class="badge badge-closed">Closed</span>';
+    return `
+    <div class="job-card fade-in" style="animation-delay:${i*0.05}s">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
+          <h3>${j.title}</h3>
+          ${statusBadge}
+        </div>
+      </div>
+      <div class="meta">
+        <div class="stat-chip">👥 <strong>${j.application_count ?? 0}</strong> applicants</div>
+      </div>
+      <div>
+        <div style="font-size:.78rem;color:var(--text3);margin-bottom:.4rem">Talent Alignment (Avg)</div>
+        <div class="score-wrap">
+          <div class="score-bar-bg"><div class="score-bar-fill" style="width:${pct}%"></div></div>
+          <span class="score-label">${avg.toFixed(1)}</span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span style="font-size:.78rem;color:var(--text3)">Job #${j.job_id}</span>
+        <a class="btn-primary-dark" style="width:auto;padding:.45rem 1.1rem;font-size:.82rem" href="/recruiter/rankings?job_id=${j.job_id}">View Rankings →</a>
+      </div>
+    </div>`;
+  }).join('');
+}
+load();
+</script>
+{% endblock %}

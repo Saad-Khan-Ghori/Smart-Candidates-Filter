@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Apply — EMS{% endblock %}
+{% block nav %}
+  <a href="/candidate/jobs">Jobs</a>
+  <a href="/candidate/applications">My Applications</a>
+  <a href="/">Home</a>
+{% endblock %}
+{% block content %}
+<div class="page-wrap mid" style="padding-top:3rem">
+  <div class="glass fade-in">
+    <div class="page-header" style="margin-bottom:1.5rem">
+      <h1 id="jobTitle" style="font-size:1.4rem">Submit Application</h1>
+      <p id="jobMeta" style="margin-top:.3rem"></p>
+    </div>
+    <div id="alert" class="alert"></div>
+
+    <form id="form" enctype="multipart/form-data">
+      <input type="hidden" name="job_id" id="job_id" />
+
+      <div class="form-group" style="margin-bottom:1.5rem">
+        <label>Resume (PDF only)</label>
+        <div class="upload-zone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+          <div style="font-size:2rem">📄</div>
+          <p id="fileName">Click to select or drag & drop your PDF resume</p>
+          <input type="file" id="fileInput" name="resume" accept="application/pdf" required />
+        </div>
+      </div>
+
+      <button class="btn-primary-dark" type="submit" id="submitBtn">
+        Submit Application
+      </button>
+    </form>
+
+    <div id="successBox" style="display:none;text-align:center;padding:2rem 0">
+      <div style="font-size:3rem;margin-bottom:1rem">🎉</div>
+      <h2 style="font-size:1.2rem;font-weight:700;margin-bottom:.5rem">Application Submitted!</h2>
+      <p style="color:var(--text3);font-size:.9rem;margin-bottom:1.5rem">Your resume is being processed — skills will be extracted automatically.</p>
+      <a href="/candidate/applications" class="btn-ghost">View My Applications →</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const jobId = params.get('job_id');
+  const box = document.getElementById('alert');
+
+  if (!jobId) {
+    box.className = 'alert alert-warning show';
+    box.textContent = 'Missing job_id. Please go back and pick a job.';
+    document.getElementById('form').style.display = 'none';
+  } else {
+    document.getElementById('job_id').value = jobId;
+    fetch('/api/jobs/' + jobId, { credentials: 'include' })
+      .then(r => r.json())
+      .then(j => {
+        document.getElementById('jobTitle').textContent = j.title || 'Apply for Job #' + jobId;
+        document.getElementById('jobMeta').textContent = j.min_years_experience ? `Min ${j.min_years_experience} years experience required` : '';
+      }).catch(() => {});
+  }
+
+  // Drag & drop
+  const zone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const fileName = document.getElementById('fileName');
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) fileName.textContent = '✅ ' + fileInput.files[0].name;
+  });
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag');
+    const f = e.dataTransfer.files[0];
+    if (f && f.type === 'application/pdf') {
+      const dt = new DataTransfer(); dt.items.add(f);
+      fileInput.files = dt.files;
+      fileName.textContent = '✅ ' + f.name;
+    } else {
+      box.className = 'alert alert-danger show';
+      box.textContent = 'Only PDF files are accepted.';
+    }
+  });
+
+  document.getElementById('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!jobId) return;
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Uploading…';
+    const fd = new FormData();
+    fd.append('job_id', jobId);
+    fd.append('resume', fileInput.files[0]);
+    const r = await fetch('/api/applications', { method: 'POST', credentials: 'include', body: fd });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      box.className = 'alert alert-danger show';
+      box.textContent = data.error || 'Submission failed. Please try again.';
+      btn.disabled = false;
+      btn.textContent = 'Submit Application';
+      return;
+    }
+    document.getElementById('form').style.display = 'none';
+    document.getElementById('successBox').style.display = 'block';
+  });
+</script>
+{% endblock %}

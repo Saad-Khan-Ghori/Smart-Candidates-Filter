@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Candidate Register — EMS{% endblock %}
+{% block nav %}
+  <a href="/candidate/login">Login</a>
+  <a href="/">Home</a>
+{% endblock %}
+{% block content %}
+<div class="page-wrap narrow" style="padding-top:3rem">
+  <div class="glass fade-in">
+    <div style="text-align:center;margin-bottom:1.75rem">
+      <div style="font-size:2rem;margin-bottom:.5rem">✨</div>
+      <h1 style="font-size:1.4rem;font-weight:700;letter-spacing:-.02em">Create Account</h1>
+      <p style="color:var(--text3);font-size:.85rem;margin-top:.3rem">Candidate registration</p>
+    </div>
+    <div id="alert" class="alert"></div>
+    <form id="form">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input class="form-input" name="full_name" placeholder="Jane Doe" required />
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input class="form-input" name="email" type="email" placeholder="you@example.com" required />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input class="form-input" name="password" type="password" placeholder="••••••••" required />
+      </div>
+      <div class="form-group">
+        <label>Education Level</label>
+        <select class="form-select-dark" id="edu" name="education_level_id" required></select>
+      </div>
+      <div class="form-group">
+        <label>Years of Experience</label>
+        <input class="form-input" name="years_experience" type="number" min="0" value="0" placeholder="0" />
+      </div>
+      <button class="btn-primary-dark" type="submit" style="margin-top:.5rem">Create Account</button>
+    </form>
+    <hr class="divider" />
+    <p style="text-align:center;font-size:.85rem;color:var(--text3)">
+      Already registered? <a href="/candidate/login" class="link-muted" style="color:var(--accent2)">Sign in</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  async function loadEdu() {
+    const rows = await fetch('/api/jobs/education-levels').then(r => r.json());
+    document.getElementById('edu').innerHTML = rows.map(e => `<option value="${e.id}">${e.label}</option>`).join('');
+  }
+  loadEdu();
+  document.getElementById('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const box = document.getElementById('alert');
+    const body = {
+      full_name: fd.get('full_name'),
+      email: fd.get('email'),
+      password: fd.get('password'),
+      role: 'candidate',
+      education_level_id: Number(fd.get('education_level_id')),
+      years_experience: Number(fd.get('years_experience') || 0),
+    };
+    const r = await fetch('/api/auth/register', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', body: JSON.stringify(body),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      box.className = 'alert alert-danger show';
+      box.textContent = data.error || 'Registration failed';
+      return;
+    }
+    box.className = 'alert alert-success show';
+    box.textContent = 'Registered! Redirecting…';
+    setTimeout(() => { window.location.href = '/candidate/login'; }, 900);
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Rankings — EMS{% endblock %}
+{% block nav %}
+  <a href="/recruiter/dashboard">Dashboard</a>
+  <a href="/">Home</a>
+{% endblock %}
+{% block content %}
+<div class="page-wrap">
+  <div class="page-header">
+    <h1 id="pageTitle">Candidate Rankings</h1>
+    <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-top:.5rem">
+      <p id="modeTag" style="margin:0"></p>
+      <span id="totalTag" style="font-size:.8rem;color:var(--text3)"></span>
+    </div>
+  </div>
+  <div id="alert" class="alert"></div>
+
+  <div class="glass" style="padding:0;overflow:hidden">
+    <table class="dark-table" id="rankTable">
+      <thead>
+        <tr>
+          <th style="width:60px">Rank</th>
+          <th>Candidate</th>
+          <th style="min-width:180px">Score</th>
+          <th>Status</th>
+          <th>Update</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const statusColors = { submitted:'badge-submitted', shortlisted:'badge-shortlisted', reviewed:'badge-reviewed', rejected:'badge-rejected' };
+const params = new URLSearchParams(window.location.search);
+const jobId = params.get('job_id');
+
+function medalEl(rank) {
+  if (rank === 1) return `<div class="rank-medal rank-1">1</div>`;
+  if (rank === 2) return `<div class="rank-medal rank-2">2</div>`;
+  if (rank === 3) return `<div class="rank-medal rank-3">3</div>`;
+  return `<div class="rank-medal rank-other">${rank}</div>`;
+}
+
+async function load() {
+  const box = document.getElementById('alert');
+  if (!jobId) {
+    box.className='alert alert-warning show';
+    box.textContent='No job_id specified in URL.';
+    return;
+  }
+
+  // show loading
+  document.getElementById('rows').innerHTML = `<tr><td colspan="5" style="text-align:center;padding:2rem"><span class="spinner"></span></td></tr>`;
+
+  const r = await fetch('/api/ranking/' + jobId, { credentials: 'include' });
+  const data = await r.json().catch(() => ({}));
+
+  if (!r.ok) {
+    box.className='alert alert-danger show';
+    box.textContent = data.error || 'Failed to load rankings.';
+    document.getElementById('rows').innerHTML = '';
+    return;
+  }
+
+  // mode pill
+  const isAI = data.mode === 'ai';
+  document.getElementById('modeTag').innerHTML = `<span class="pill" style="margin:0;font-size:.75rem">${isAI ? '✨ Intelligent Match' : '📊 Standard Scoring'}</span>`;
+
+  const candidates = data.candidates || [];
+  document.getElementById('totalTag').textContent = candidates.length + ' candidate' + (candidates.length !== 1 ? 's' : '');
+
+  if (!candidates.length) {
+    document.getElementById('rows').innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="icon">👥</div><p>No applications for this job yet.</p></div></td></tr>`;
+    return;
+  }
+
+  document.getElementById('rows').innerHTML = candidates.map((c, i) => {
+    const score = parseFloat(c.score) || 0;
+    const pct = Math.min(100, score).toFixed(0);
+    return `
+    <tr class="fade-in" style="animation-delay:${i*0.04}s">
+      <td>${medalEl(c.rank_position)}</td>
+      <td style="font-weight:600;color:var(--text)">${c.candidate_name}</td>
+      <td>
+        <div class="score-wrap">
+          <div class="score-bar-bg"><div class="score-bar-fill" style="width:${pct}%"></div></div>
+          <span class="score-label">${score.toFixed(1)}</span>
+        </div>
+      </td>
+      <td><span class="badge ${statusColors[c.application_status]||'badge-submitted'}">${c.application_status}</span></td>
+      <td>
+        <select class="status-select" data-app="${c.application_id}">
+          <option value="">Change…</option>
+          <option value="shortlisted">Shortlisted</option>
+          <option value="reviewed">Reviewed</option>
+          <option value="rejected">Rejected</option>
+          <option value="submitted">Submitted</option>
+        </select>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.querySelectorAll('select[data-app]').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      const status = sel.value;
+      if (!status) return;
+      const appId = sel.getAttribute('data-app');
+      const pr = await fetch('/api/applications/' + appId + '/status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status }),
+      });
+      const d = await pr.json().catch(() => ({}));
+      if (!pr.ok) {
+        box.className='alert alert-danger show';
+        box.textContent = d.error || pr.status;
+      } else {
+        box.className='alert alert-success show';
+        box.textContent = `Status updated to "${status}" for application #${appId}`;
+        setTimeout(load, 800);
+      }
+    });
+  });
+}
+load();
+</script>
+{% endblock %}

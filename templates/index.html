@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}EMS — Smart Recruitment{% endblock %}
+{% block nav %}
+  <a href="/candidate/jobs">Browse Jobs</a>
+  <a href="/candidate/login">Candidate</a>
+  <a href="/recruiter/login">Recruiter</a>
+  <a href="/admin/login">Admin</a>
+{% endblock %}
+{% block content %}
+<div class="page-wrap">
+  <div class="hero fade-in">
+    <div class="pill">✦ Enterprise-Grade Talent Matching</div>
+    <h1>Streamline Your<br>Hiring Workflow</h1>
+    <p>An intelligent recruitment ecosystem designed to automate candidate screening. Our proprietary ranking engine analyzes skill compatibility and experience to surface the best talent instantly.</p>
+  </div>
+
+  <div class="portal-grid fade-in">
+    <div class="portal-card" onclick="window.location='/candidate/register'">
+      <div class="icon">👤</div>
+      <h3>Candidate Portal</h3>
+      <p>Discover opportunities that match your expertise. Submit your profile and track your application status across multiple roles with ease.</p>
+      <div style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap">
+        <a href="/candidate/register" class="btn-primary-dark" style="width:auto;padding:.5rem 1.2rem;font-size:.85rem">Get Started</a>
+        <a href="/candidate/login" class="btn-ghost btn-sm">Sign in</a>
+      </div>
+    </div>
+
+    <div class="portal-card" onclick="window.location='/recruiter/register'">
+      <div class="icon">🏢</div>
+      <h3>Recruiter Suite</h3>
+      <p>Define role requirements, manage listings, and leverage automated candidate scoring to prioritize the most qualified applicants.</p>
+      <div style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap">
+        <a href="/recruiter/register" class="btn-primary-dark" style="width:auto;padding:.5rem 1.2rem;font-size:.85rem">Register</a>
+        <a href="/recruiter/login" class="btn-ghost btn-sm">Sign in</a>
+      </div>
+    </div>
+
+    <div class="portal-card" onclick="window.location='/admin/login'">
+      <div class="icon">⚙️</div>
+      <h3>Admin</h3>
+      <p>Full platform oversight — manage users, monitor all jobs, view the status audit trail.</p>
+      <div style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap">
+        <a href="/admin/login" class="btn-primary-dark" style="width:auto;padding:.5rem 1.2rem;font-size:.85rem">Admin Login</a>
+      </div>
+    </div>
+  </div>
+
+  <p style="text-align:center;color:var(--text3);font-size:.8rem;margin-top:2.5rem">
+    Default admin: <code style="color:var(--text2)">admin@ems.local</code> / <code style="color:var(--text2)">admin123</code>
+  </p>
+</div>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Admin Login — EMS{% endblock %}
+{% block nav %}
+  <a href="/">Home</a>
+{% endblock %}
+{% block content %}
+<div class="page-wrap narrow" style="padding-top:3.5rem">
+  <div class="glass fade-in">
+    <div style="text-align:center;margin-bottom:1.75rem">
+      <div style="font-size:2.2rem;margin-bottom:.5rem">⚙️</div>
+      <h1 style="font-size:1.4rem;font-weight:700;letter-spacing:-.02em">Admin Portal</h1>
+      <p style="color:var(--text3);font-size:.85rem;margin-top:.3rem">System administration</p>
+    </div>
+    <div id="alert" class="alert"></div>
+    <form id="form">
+      <div class="form-group">
+        <label>Email</label>
+        <input class="form-input" name="email" type="email" placeholder="admin@ems.local" required />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input class="form-input" name="password" type="password" placeholder="••••••••" required />
+      </div>
+      <button class="btn-primary-dark" type="submit" style="margin-top:.5rem;background:linear-gradient(135deg,#1f2937,#111827);box-shadow:0 4px 16px rgba(0,0,0,0.4)">Secure Login</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.getElementById('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const box = document.getElementById('alert');
+    const r = await fetch('/api/auth/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email: fd.get('email'), password: fd.get('password') }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) { box.className='alert alert-danger show'; box.textContent = data.error || 'Login failed'; return; }
+    if (data.role !== 'admin') {
+      box.className='alert alert-warning show'; box.textContent = 'Insufficient privileges.'; return;
+    }
+    window.location.href = '/admin/panel';
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel — EMS{% endblock %}
+{% block nav %}
+  <a href="/">Home</a>
+{% endblock %}
+{% block content %}
+<div class="page-wrap">
+  <div class="page-header">
+    <h1>Administration</h1>
+    <p>System overview and audit logs</p>
+  </div>
+  <div id="alert" class="alert"></div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('users')">Users</button>
+    <button class="tab-btn" onclick="switchTab('jobs')">Jobs</button>
+    <button class="tab-btn" onclick="switchTab('audit')">Audit Log</button>
+  </div>
+
+  <div class="glass" style="padding:0;overflow:hidden">
+    <!-- Users Tab -->
+    <div id="tab-users" class="tab-panel active fade-in">
+      <div style="overflow-x:auto">
+        <table class="dark-table">
+          <thead><tr><th>ID</th><th>Email</th><th>Name</th><th>Role</th><th>Linked Candidate</th></tr></thead>
+          <tbody id="tbUsers"><tr><td colspan="5" style="text-align:center"><span class="spinner"></span></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- Jobs Tab -->
+    <div id="tab-jobs" class="tab-panel fade-in">
+      <div style="overflow-x:auto">
+        <table class="dark-table">
+          <thead><tr><th>ID</th><th>Title</th><th>Recruiter ID</th><th>Apps</th><th>Avg Score</th></tr></thead>
+          <tbody id="tbJobs"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Audit Tab -->
+    <div id="tab-audit" class="tab-panel fade-in">
+      <div style="overflow-x:auto">
+        <table class="dark-table">
+          <thead><tr><th>Time</th><th>App ID</th><th>Job ID</th><th>Old Status</th><th>New Status</th></tr></thead>
+          <tbody id="tbAudit"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`.tab-btn[onclick="switchTab('${tabId}')"]`).classList.add('active');
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`tab-${tabId}`).classList.add('active');
+  }
+
+  const roleColors = { admin:'badge-danger', recruiter:'badge-shortlisted', candidate:'badge-submitted' };
+  const statusColors = { submitted:'badge-submitted', shortlisted:'badge-shortlisted', reviewed:'badge-reviewed', rejected:'badge-rejected' };
+
+  async function loadAll() {
+    const box = document.getElementById('alert');
+    const me = await fetch('/api/auth/me', { credentials: 'include' }).then(r => r.json()).catch(()=>({}));
+    if (!me.authenticated || me.role !== 'admin') {
+      box.className='alert alert-warning show';
+      box.innerHTML = 'Please <a href="/admin/login" style="color:var(--accent2)">log in as admin</a>.';
+      document.querySelector('.tab-bar').style.display = 'none';
+      document.querySelector('.glass').style.display = 'none';
+      return;
+    }
+    const [u, j, a] = await Promise.all([
+      fetch('/api/admin/users', { credentials: 'include' }).then(r => r.json()).catch(()=>[]),
+      fetch('/api/admin/jobs', { credentials: 'include' }).then(r => r.json()).catch(()=>[]),
+      fetch('/api/admin/audit', { credentials: 'include' }).then(r => r.json()).catch(()=>[]),
+    ]);
+    
+    document.getElementById('tbUsers').innerHTML = u.length ? u.map(x => `<tr><td>${x.id}</td><td style="font-weight:500;color:var(--text)">${x.email}</td><td>${x.full_name}</td><td><span class="badge ${x.role==='admin'?'badge-rejected':(x.role==='recruiter'?'badge-shortlisted':'badge-submitted')}">${x.role}</span></td><td>${x.candidate_id ? '#'+x.candidate_id : '—'}</td></tr>`).join('') : `<tr><td colspan="5" class="text-center">No users</td></tr>`;
+    
+    document.getElementById('tbJobs').innerHTML = j.length ? j.map(x => `<tr><td>${x.id}</td><td style="font-weight:500;color:var(--text)">${x.title}</td><td>#${x.recruiter_user_id}</td><td>${x.application_count}</td><td>${parseFloat(x.average_score||0).toFixed(1)}</td></tr>`).join('') : `<tr><td colspan="5" class="text-center">No jobs</td></tr>`;
+    
+    document.getElementById('tbAudit').innerHTML = a.length ? a.map(x => `<tr><td style="color:var(--text3);font-size:.8rem">${(x.changed_at || '').replace('T',' ').slice(0,19)}</td><td>#${x.application_id}</td><td>#${x.job_id}</td><td><span class="badge ${statusColors[x.old_status]||'badge-submitted'}">${x.old_status}</span></td><td><span class="badge ${statusColors[x.new_status]||'badge-submitted'}">${x.new_status}</span></td></tr>`).join('') : `<tr><td colspan="5" class="text-center">No audit logs</td></tr>`;
+  }
+  loadAll();
+</script>
+{% endblock %}

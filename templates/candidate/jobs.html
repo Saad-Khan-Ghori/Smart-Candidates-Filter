@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Open Positions — EMS{% endblock %}
+{% block nav %}
+  <a href="/candidate/applications">My Applications</a>
+  <a href="/candidate/login">Account</a>
+  <a href="/">Home</a>
+{% endblock %}
+{% block content %}
+<div class="page-wrap">
+  <div class="page-header">
+    <h1>Career Opportunities</h1>
+    <p>Our platform automatically aligns your professional expertise with role requirements for an optimal match.</p>
+  </div>
+  <div id="alert" class="alert"></div>
+  <div id="list" class="card-grid"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function load() {
+  const r = await fetch('/api/jobs', { credentials: 'include' });
+  const jobs = await r.json().catch(() => []);
+  const root = document.getElementById('list');
+  if (!jobs.length) {
+    root.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>No open positions yet. Check back soon!</p></div>';
+    return;
+  }
+  root.innerHTML = jobs.map((j, i) => `
+    <div class="job-card fade-in" style="animation-delay:${i*0.05}s">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
+          <h3>${j.title || 'Untitled Role'}</h3>
+          <span class="badge badge-open">Open</span>
+        </div>
+        ${j.description ? `<p style="font-size:.82rem;color:var(--text3);margin-top:.5rem;line-height:1.5">${j.description.slice(0,140)}${j.description.length>140?'…':''}</p>` : ''}
+      </div>
+      <div class="meta">
+        <span>📅 Min. ${j.min_years_experience ?? 0} yrs exp</span>
+        <span>👥 ${j.application_count ?? 0} applicants</span>
+      </div>
+      <div class="card-footer">
+        <span style="font-size:.78rem;color:var(--text3)">Avg score: <strong style="color:var(--text2)">${j.average_score ?? '—'}</strong></span>
+        <a class="btn-primary-dark" style="width:auto;padding:.45rem 1.1rem;font-size:.82rem" href="/candidate/apply?job_id=${j.job_id || j.id}">Apply →</a>
+      </div>
+    </div>
+  `).join('');
+}
+load();
+</script>
+{% endblock %}

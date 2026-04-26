@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Post a Job — EMS{% endblock %}
+{% block nav %}
+  <a href="/recruiter/dashboard">Dashboard</a>
+  <a href="/">Home</a>
+{% endblock %}
+{% block content %}
+<div class="page-wrap mid" style="padding-top:3rem">
+  <div class="glass fade-in">
+    <div class="page-header" style="margin-bottom:1.5rem">
+      <h1 style="font-size:1.5rem">Create Opportunity</h1>
+      <p>Define role requirements and select essential skills for precise candidate matching.</p>
+    </div>
+    <div id="alert" class="alert"></div>
+    <form id="form">
+      <div class="form-group">
+        <label>Job Title</label>
+        <input class="form-input" name="title" placeholder="e.g. Senior Python Developer" required />
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea class="form-input" name="description" rows="4" placeholder="Describe the role, responsibilities, and expectations…" style="resize:vertical"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Minimum Years of Experience</label>
+        <input class="form-input" name="min_years" type="number" min="0" value="1" />
+      </div>
+      <div class="form-group" style="margin-bottom:1.5rem">
+        <label>Required Skills</label>
+        <div id="skillsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.5rem;margin-top:.5rem"></div>
+      </div>
+      <button class="btn-primary-dark" type="submit">Publish Job →</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function loadSkills() {
+  const skills = await fetch('/api/jobs/skills').then(r => r.json()).catch(() => []);
+  document.getElementById('skillsGrid').innerHTML = skills.map(s => `
+    <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.85rem;color:var(--text2);background:rgba(255,255,255,.03);border:1px solid var(--glass-border);border-radius:8px;padding:.5rem .75rem;transition:all .15s">
+      <input type="checkbox" name="skill" value="${s.id}" style="accent-color:var(--accent)" />
+      ${s.name}
+    </label>
+  `).join('');
+}
+loadSkills();
+
+document.getElementById('form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Publishing…';
+  const box = document.getElementById('alert');
+  const fd = new FormData(e.target);
+  const skill_ids = Array.from(document.querySelectorAll('input[name=skill]:checked')).map(c => Number(c.value));
+  const body = {
+    title: fd.get('title'),
+    description: fd.get('description'),
+    min_years_experience: Number(fd.get('min_years') || 1),
+    skill_ids,
+  };
+  const r = await fetch('/api/jobs', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', body: JSON.stringify(body),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    box.className='alert alert-danger show'; box.textContent = data.error || 'Failed to create job.';
+    btn.disabled = false; btn.textContent = 'Publish Job →';
+    return;
+  }
+  box.className='alert alert-success show'; box.textContent='Job posted! Redirecting to dashboard…';
+  setTimeout(() => { window.location.href = '/recruiter/dashboard'; }, 1000);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}My Applications — EMS{% endblock %}
+{% block nav %}
+  <a href="/candidate/jobs">Browse Jobs</a>
+  <a href="/">Home</a>
+{% endblock %}
+{% block content %}
+<div class="page-wrap">
+  <div class="page-header">
+    <h1>Application Tracking</h1>
+    <p>Review your active applications and profile alignment analysis across different roles.</p>
+  </div>
+  <div id="alert" class="alert"></div>
+
+  <!-- Extracted skills panel -->
+  <div class="glass glass-sm fade-in" style="margin-bottom:1.5rem" id="skillsPanel" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <span style="font-size:.8rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">💼 Identified Professional Competencies</span>
+      <span id="skillCount" style="font-size:.78rem;color:var(--text3)"></span>
+    </div>
+    <div class="skills-wrap" id="skillTags">
+      <span style="color:var(--text3);font-size:.85rem">Submit an application to generate your competency profile.</span>
+    </div>
+  </div>
+
+  <div class="glass" style="padding:0;overflow:hidden">
+    <table class="dark-table" id="appTable">
+      <thead>
+        <tr>
+          <th>Role</th>
+          <th>Alignment</th>
+          <th>Status</th>
+          <th>Submitted</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const statusColors = { submitted:'badge-submitted', shortlisted:'badge-shortlisted', reviewed:'badge-reviewed', rejected:'badge-rejected' };
+
+async function load() {
+  const box = document.getElementById('alert');
+  const r = await fetch('/api/applications/mine', { credentials: 'include' });
+  if (r.status === 401) {
+    box.className = 'alert alert-warning show';
+    box.innerHTML = 'Please <a href="/candidate/login" style="color:var(--accent2)">log in</a> to view your applications.';
+    document.querySelector('.glass').style.display = 'none';
+    return;
+  }
+  const rows = await r.json().catch(() => []);
+  const tb = document.getElementById('rows');
+  if (!rows || !rows.length) {
+    tb.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="icon">📭</div><p>No applications yet. <a href="/candidate/jobs" style="color:var(--accent2)">Browse jobs</a></p></div></td></tr>`;
+  } else {
+    tb.innerHTML = rows.map(a => {
+      const score = parseFloat(a.score) || 0;
+      const pct = Math.min(100, score).toFixed(0);
+      const date = (a.applied_at || '').toString().replace('T',' ').slice(0,16);
+      return `
+        <tr class="fade-in">
+          <td style="color:var(--text);font-weight:600">${a.job_title || 'Job #' + a.job_id}</td>
+          <td style="min-width:160px">
+            <div class="score-wrap">
+              <div class="score-bar-bg"><div class="score-bar-fill" style="width:${pct}%"></div></div>
+              <span class="score-label">${score.toFixed(1)}</span>
+            </div>
+          </td>
+          <td><span class="badge ${statusColors[a.status]||'badge-submitted'}">${a.status}</span></td>
+          <td style="color:var(--text3);font-size:.8rem">${date}</td>
+        </tr>`;
+    }).join('');
+  }
+
+  // Load extracted skills
+  const sr = await fetch('/api/applications/skills', { credentials: 'include' });
+  if (sr.ok) {
+    const skills = await sr.json().catch(() => []);
+    const panel = document.getElementById('skillsPanel');
+    panel.style.display = 'block';
+    document.getElementById('skillCount').textContent = skills.length + ' skills found';
+    if (skills.length) {
+      document.getElementById('skillTags').innerHTML = skills.map(s =>
+        `<span class="badge badge-skill">${s.name}</span>`
+      ).join('');
+    }
+  }
+}
+load();
+</script>
+{% endblock %}

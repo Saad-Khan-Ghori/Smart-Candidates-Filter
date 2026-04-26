@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}EMS Recruitment{% endblock %}</title>
+  <meta name="description" content="EMS Recruitment — Intelligent Talent Matching and Automated Screening Platform." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <nav class="ems-nav">
+    <a class="brand" href="{{ url_for('pages.home') }}">EMS<span> Recruitment</span></a>
+    <div class="nav-links">
+      {% block nav %}{% endblock %}
+    </div>
+  </nav>
+  <div id="__page__">
+    {% block content %}{% endblock %}
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
