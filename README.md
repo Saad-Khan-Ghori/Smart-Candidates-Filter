@@ -1,81 +1,90 @@
-# EMS Recruitment — Intelligent Talent Matching Platform
+# 🤖📦 Smart Warehouse Robot Coordinator
 
-EMS (Enterprise Management System) Recruitment is a high-performance, automated talent acquisition platform built with Flask and Oracle Database. It leverages intelligent filtering and profile alignment analysis to surface the best candidates for your organization.
+A high-performance, multithreaded simulation of autonomous warehouse robots, engineered in **C99** using **POSIX Threads** and **Raylib**. This project demonstrates advanced Operating Systems concepts through a real-time, interactive grid-based logistics environment.
 
-## Key Features
+## 🌟 Project Overview
 
-*   **Intelligent Talent Matching**: Proprietary matching engine that analyzes candidate competencies and alignment with role requirements.
-*   **Automated Profile Screening**: Seamless PDF resume processing with automatic identification of professional skills.
-*   **Premium Glassmorphism UI**: State-of-the-art dark mode interface designed for optimal recruiter and candidate experience.
-*   **Enterprise-Grade Backend**: Powered by Oracle Database with robust PL/SQL stored procedures and views for high-speed data processing.
-*   **Full Admin Suite**: Comprehensive oversight for user management, job monitoring, and secure audit logging.
+The Smart Warehouse Robot Coordinator simulates a fleet of robots navigating a 5x5 grid. Robots are tasked with picking up items from the "Floor" and delivering them to "Shelves," all while managing shared resources and avoiding physical collisions in a concurrent environment.
 
-## Tech Stack
+### 📍 Current Project Status
+- **Stable Core:** Multithreaded navigation engine and collision avoidance are fully functional.
+- **GUI Revamp:** An interactive Raylib-based interface has been implemented, providing real-time thread state visualization.
+- **Task Management:** A priority-based task queue with starvation prevention (aging) is operational.
+- **Bottleneck Handling:** Semaphore-regulated Critical Zone management is active to optimize throughput.
 
-*   **Frontend**: HTML5, Vanilla CSS (Premium Glassmorphism), JavaScript (Fetch API)
-*   **Backend**: Flask (Python)
-*   **Database**: Oracle Database (XE 11.2+, 23c Free)
-*   **Connectivity**: `oracledb` (Thick Mode enabled for legacy support)
-*   **Processing**: NLP-based skill identification and profile scoring
+### Key Components:
+- **Shelves (Row 0):** Delivery targets for items.
+- **Floor (Rows 1-3):** Active workspace where items are spawned via user interaction.
+- **Docks (Row 4):** Home base for robots when idle.
+- **Critical Zone (Cols 2-3):** A high-traffic bottleneck managed by semaphores.
 
-## Prerequisites
+## 🧠 Core OS Concepts Demonstrated
 
-- Python 3.10+
-- Oracle Database instance
-- Oracle Client Libraries (detected automatically in Thick Mode)
+### 🧵 Multithreading & Concurrency
+- **POSIX Threads (`pthread`):** Each robot is a fully independent thread with its own state machine and decision-making logic.
+- **Main GUI Thread:** Handles rendering and user input without blocking worker threads, using a private state snapshot to prevent priority inversion.
 
-## Getting Started
+### 🔒 Synchronization & Resource Management
+- **Mutexes (Mutual Exclusion):** 
+  - **Grid Mutexes:** Every cell in the 5x5 grid has its own mutex. Robots must acquire a cell's mutex before entering, ensuring no two robots ever occupy the same space.
+  - **Task Queue Mutex:** Protects the shared priority queue of pending tasks.
+  - **Stats Mutex:** Ensures thread-safe updates to global performance metrics.
+- **Counting Semaphores:** Used to regulate traffic in the **Critical Zone** (Columns 2 & 3). A maximum of 2 robots are permitted in this zone simultaneously to prevent gridlocks.
 
-### 1. Initialize the Environment
+### 🛡️ Deadlock & Starvation Prevention
+- **Collision Avoidance:** Robots use `pthread_mutex_timedlock`. If a path is blocked, they attempt to "dodge" into adjacent cells or wait/retry, breaking potential circular waits.
+- **Priority Aging:** The task scheduler implements aging. As tasks sit in the queue, their priority dynamically increases, ensuring low-priority tasks are eventually serviced even during high-demand periods.
 
-```bash
-# Clone the repository (if applicable)
-# git clone <your-repo-url>
-# cd EMS
+## 🎨 Interactive GUI Legend
 
-# Create and activate a virtual environment
-python -m venv .venv
-.venv\Scripts\activate
+The simulation provides real-time visual feedback on the internal state of each POSIX thread:
 
-# Install required packages
-pip install -r requirements.txt
-python -m spacy download en_core_web_sm
-```
+* 🟢 **Green (MOVING):** The thread is active and navigating the grid.
+* 🔴 **Red (WAIT ZONE):** The thread is `BLOCKED` by the Critical Zone semaphore.
+* 🟠 **Orange (WAIT CELL):** The thread is `BLOCKED` awaiting a grid cell mutex.
+* ⚫ **Grey (IDLE):** The thread is suspended, waiting for new tasks to be spawned.
 
-### 2. Database Configuration
+## 🚀 Getting Started
 
-Ensure your Oracle credentials are set in `config.py` or via environment variables:
+### Prerequisites
 
-- `ORACLE_USER`
-- `ORACLE_PASSWORD`
-- `ORACLE_DSN`
-
-Run the automated initialization script to set up the schema:
+You will need a C compiler and standard development libraries. On Ubuntu/WSL:
 
 ```bash
-python init_db.py
+sudo apt-get update
+sudo apt-get install -y build-essential cmake git libasound2-dev libx11-dev libxrandr-dev libxi-dev libgl1-mesa-dev libxcursor-dev libxinerama-dev
 ```
 
-### 3. Run the Application
+### Installation & Build
 
-```bash
-python run.py
-```
+1. **Install Raylib Locally:**
+   The project includes a helper to build the graphics engine without system-wide changes.
+   ```bash
+   make install-raylib
+   ```
 
-Open your browser at `http://localhost:5000`.
+2. **Compile the Simulation:**
+   ```bash
+   make
+   ```
 
-## Administrative Access
+3. **Launch the Simulation:**
+   ```bash
+   ./warehouse_gui
+   ```
 
-Default development credentials:
-- **Email**: `admin@ems.local`
-- **Password**: `admin123`
+### Controls
+- **Left Click:** Spawn a pickup task on any Floor cell (Rows 1-3).
+- **Close Window:** Terminates the simulation and generates a performance report in the terminal.
 
-## Configuration Options
+## 📊 Performance Reporting
 
-Toggle between standard and enhanced matching in `config.py`:
-- `USE_AI_RANKING`: Enables/Disables intelligent matching engine.
-- `USE_SEMANTIC_RANKING`: Enables deep semantic similarity analysis (requires `sentence-transformers`).
+Upon exit, the system generates a detailed report including:
+- Total task throughput (tasks per second).
+- Per-robot efficiency metrics.
+- Resource contention statistics (Zone blocks and Collision waits).
+- Detailed event logs in `logs.txt`.
 
 ---
 
-*Developed with focus on performance, security, and user experience.*
+Developed as a practical exploration of POSIX synchronization and concurrent system design.
